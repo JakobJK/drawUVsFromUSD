@@ -1,6 +1,9 @@
 import argparse
+from collections import defaultdict
+
 from pxr import Usd, UsdGeom
 import skia
+
 
 def get_udim_from_uv(u, v):
     if u < 0 or u > 10 or v < 0:
@@ -10,7 +13,6 @@ def get_udim_from_uv(u, v):
 def get_polygon_from_face(face_uvs, uv_indicies, uv_positions):
     polygon = []
     for uv_index in face_uvs:
-        # Map UV index to the corresponding UV position
         position = uv_positions[uv_index]
         polygon.append(position)
     return polygon
@@ -67,7 +69,36 @@ def is_front_facing(faces):
         area += (u2 - u1) * (v2 + v1)
     return area < 0
 
+def build_graph(edges):
+    graph = defaultdict(list)
+    for a, b in edges:
+        graph[a].append(b)
+        graph[b].append(a)
+    return graph
 
+def traverse_graph(graph, visited, current):
+    path = []
+    stack = [current]
+
+    while stack:
+        node = stack.pop()
+        if node not in visited:
+            visited.add(node)
+            path.append(node)
+            stack.extend(graph[node])
+    return path
+
+def get_paths_from_graph(graph):
+    visited = set()
+    paths = []
+    for key in graph:
+        if key in visited:
+            continue
+        else:
+            paths.append(traverse_graph(graph, visited, key))
+    return paths
+    
+        
 def main():
     settings = get_settings()
     stage = Usd.Stage.Open(settings.path)
@@ -96,11 +127,16 @@ def main():
                 polygons.append(get_polygon_from_face(face_uvs, uv_indicies, uv_positions))
                 for edge, val in edges.items():
                     if edge not in uv_edges:
-                        uv_edges[edge] =  {"pos": val, "count":1} # Initialize positions and count
+                        uv_edges[edge] =  1
                     else:
-                        uv_edges[edge]["count"] += 1
+                        uv_edges[edge] += 1
                 index += count
-
+                
+        adjecency_list = [ edge for edge in uv_edges if uv_edges[edge] == 1 ]
+        graph = build_graph(adjecency_list)
+        paths = get_paths_from_graph(graph)
+        
+        
         for polygon in polygons:
             scaled_polygon = [
                 skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size)
@@ -112,15 +148,14 @@ def main():
             canvas.drawPath(path, settings.internal_edges)
 
 
-        for (a, b), edge_data in uv_edges.items():
-            pos_a, pos_b = edge_data["pos"]
-            count = edge_data["count"]
-
-            x1, y1 = pos_a[0] * settings.size, (1 - pos_a[1]) * settings.size
-            x2, y2 = pos_b[0] * settings.size, (1 - pos_b[1]) * settings.size
-
-            if count == 1:
-                canvas.drawLine(x1, y1, x2, y2, settings.border_edges)
+        for path in paths:
+            scaled_path = [
+                skia.Point(uv_positions[idx][0] * settings.size, (1 - uv_positions[idx][1]) * settings.size)
+                for idx in path
+            ]
+            path_obj = skia.Path()
+            path_obj.addPoly(scaled_path, close=True)
+            canvas.drawPath(path_obj, settings.border_edges)
 
     image = surface.makeImageSnapshot()
     image.save(settings.output_path, skia.kPNG)
