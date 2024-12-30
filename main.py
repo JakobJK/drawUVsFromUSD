@@ -1,6 +1,5 @@
 import argparse
 from collections import defaultdict
-
 from pxr import Usd, UsdGeom
 import skia
 
@@ -10,14 +9,14 @@ def get_udim_from_uv(u, v):
         return -1
     return 1001 + int(v) * 10 + int(u)
 
-def get_polygon_from_face(face_uvs, uv_indicies, uv_positions):
+def get_polygon_from_face(face_uvs, uv_positions):
     polygon = []
     for uv_index in face_uvs:
         position = uv_positions[uv_index]
         polygon.append(position)
     return polygon
 
-def get_uv_edges_from_face(face_uvs, uv_indicies, uv_positions):
+def get_uv_edges_from_face(face_uvs, uv_positions):
     edges = {}
     for i in range(len(face_uvs)):
         a, b = face_uvs[i], face_uvs[(i + 1) % len(face_uvs)]
@@ -28,6 +27,7 @@ def get_uv_edges_from_face(face_uvs, uv_indicies, uv_positions):
 
 def get_settings():
     parser = argparse.ArgumentParser(description="Debug argparse")
+    
     parser.add_argument("--path", type=str, default="./example.usd", help="Path to the USD file")
     parser.add_argument("--output_path", type=str, default="output.png", help="Output file path")
     parser.add_argument("-s", "--size", type=int, default=2048, help="Image size")
@@ -44,6 +44,7 @@ def get_settings():
     args.border_edges = skia.Paint(
         AntiAlias=True,
         Color=skia.Color4f(1, 1, 1, 1),
+        Style=skia.Paint.kStroke_Style,
         StrokeWidth=4,
     )
 
@@ -123,13 +124,10 @@ def main():
             index = 0
             for idx, count in enumerate(face_vert_count):
                 face_uvs = uv_indicies[index:index + count]
-                edges = get_uv_edges_from_face(face_uvs, uv_indicies, uv_positions)
-                polygons.append(get_polygon_from_face(face_uvs, uv_indicies, uv_positions))
+                edges = get_uv_edges_from_face(face_uvs, uv_positions)
+                polygons.append(get_polygon_from_face(face_uvs, uv_positions))
                 for edge, val in edges.items():
-                    if edge not in uv_edges:
-                        uv_edges[edge] =  1
-                    else:
-                        uv_edges[edge] += 1
+                    uv_edges[edge] = uv_edges.get(edge, 0) + 1
                 index += count
                 
         adjecency_list = [ edge for edge in uv_edges if uv_edges[edge] == 1 ]
