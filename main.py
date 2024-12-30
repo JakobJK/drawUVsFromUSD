@@ -1,20 +1,15 @@
 import argparse
 from collections import defaultdict
-from pxr import Usd, UsdGeom
+from typing import List
 import skia
+from pxr import Usd, UsdGeom
 
+from settings import get_settings
 
 def get_udim_from_uv(u, v):
     if u < 0 or u > 10 or v < 0:
-        return -1
-    return 1001 + int(v) * 10 + int(u)
-
-def get_polygon_from_face(face_uvs, uv_positions):
-    polygon = []
-    for uv_index in face_uvs:
-        position = uv_positions[uv_index]
-        polygon.append(position)
-    return polygon
+        return "-1"
+    return str(1001 + int(v) * 10 + int(u))
 
 def get_uv_edges_from_face(face_uvs, uv_positions):
     edges = {}
@@ -25,42 +20,6 @@ def get_uv_edges_from_face(face_uvs, uv_positions):
         edges[(a, b)] = (uv_positions[a], uv_positions[b])
     return edges
 
-def get_settings():
-    parser = argparse.ArgumentParser(description="Debug argparse")
-    
-    parser.add_argument("--path", type=str, default="./example.usd", help="Path to the USD file")
-    parser.add_argument("--output_path", type=str, default="output.png", help="Output file path")
-    parser.add_argument("-s", "--size", type=int, default=2048, help="Image size")
-
-    args = parser.parse_args()
-
-    args.internal_edges = skia.Paint(
-        AntiAlias=True,
-        Color=skia.Color4f(0, 0, 0, 1),
-        Style=skia.Paint.kStroke_Style,
-        StrokeWidth=2,
-    )
-
-    args.border_edges = skia.Paint(
-        AntiAlias=True,
-        Color=skia.Color4f(1, 1, 1, 1),
-        Style=skia.Paint.kStroke_Style,
-        StrokeWidth=4,
-    )
-
-    args.front_facing = skia.Paint(
-        AntiAlias=True,
-        Color=skia.Color4f(0, 0, 1, 0.5),
-        Style=skia.Paint.kFill_Style,
-    )
-
-    args.back_facing = skia.Paint(
-        AntiAlias=True,
-        Color=skia.Color4f(1, 0, 0, 0.5),
-        Style=skia.Paint.kFill_Style,
-    )
-
-    return args
 
 def is_front_facing(faces):
     area = 0
@@ -93,13 +52,29 @@ def get_paths_from_graph(graph):
     visited = set()
     paths = []
     for key in graph:
-        if key in visited:
-            continue
-        else:
+        if key not in visited:
             paths.append(traverse_graph(graph, visited, key))
     return paths
-    
-        
+
+def draw_polygon(polygon, canvas, settings):
+    scaled_polygon = [
+        skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size)
+        for uv in polygon
+    ]
+    path = skia.Path()
+    path.addPoly(scaled_polygon, close=True)
+    canvas.drawPath(path, settings.front_facing if is_front_facing(polygon) else settings.back_facing)
+    canvas.drawPath(path, settings.internal_edges)
+
+def draw_border_edges(path, uv_positions, canvas, settings):
+    scaled_path = [
+            skia.Point(uv_positions[idx][0] * settings.size, (1 - uv_positions[idx][1]) * settings.size)
+            for idx in path
+        ]
+    path_obj = skia.Path()
+    path_obj.addPoly(scaled_path, close=True)
+    canvas.drawPath(path_obj, settings.border_edges)
+
 def main():
     settings = get_settings()
     stage = Usd.Stage.Open(settings.path)
@@ -115,7 +90,7 @@ def main():
         uv_positions = uv_prim_vars.Get(Usd.TimeCode.Default())
 
         polygons = []
-        uv_edges = {}
+        uv_edges = defaultdict(dict)
 
         if uv_prim_vars:
             face_vert_count = mesh.GetFaceVertexCountsAttr().Get()
@@ -125,35 +100,21 @@ def main():
             for idx, count in enumerate(face_vert_count):
                 face_uvs = uv_indicies[index:index + count]
                 edges = get_uv_edges_from_face(face_uvs, uv_positions)
-                polygons.append(get_polygon_from_face(face_uvs, uv_positions))
+                polygon = [uv_positions[uv_index] for uv_index in face_uvs]
+                polygons.append(polygon)
                 for edge, val in edges.items():
                     uv_edges[edge] = uv_edges.get(edge, 0) + 1
                 index += count
-                
+
         adjecency_list = [ edge for edge in uv_edges if uv_edges[edge] == 1 ]
         graph = build_graph(adjecency_list)
         paths = get_paths_from_graph(graph)
-        
-        
-        for polygon in polygons:
-            scaled_polygon = [
-                skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size)
-                for uv in polygon
-            ]
-            path = skia.Path()
-            path.addPoly(scaled_polygon, close=True)
-            canvas.drawPath(path, settings.front_facing if is_front_facing(polygon) else settings.back_facing)
-            canvas.drawPath(path, settings.internal_edges)
 
+        for polygon in polygons:
+            draw_polygon(polygon, canvas, settings)
 
         for path in paths:
-            scaled_path = [
-                skia.Point(uv_positions[idx][0] * settings.size, (1 - uv_positions[idx][1]) * settings.size)
-                for idx in path
-            ]
-            path_obj = skia.Path()
-            path_obj.addPoly(scaled_path, close=True)
-            canvas.drawPath(path_obj, settings.border_edges)
+            draw_border_edges(path, uv_positions, canvas, settings)
 
     image = surface.makeImageSnapshot()
     image.save(settings.output_path, skia.kPNG)
