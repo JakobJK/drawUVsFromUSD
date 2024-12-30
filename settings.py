@@ -1,5 +1,15 @@
 import skia
 import argparse
+from typing import NamedTuple
+
+class Settings(NamedTuple):
+    path: str
+    output_path: str
+    size: int
+    internal_edges: skia.Paint
+    border_edges: skia.Paint
+    front_facing: skia.Paint
+    back_facing: skia.Paint
 
 def get_settings():
     parser = argparse.ArgumentParser(description="Debug argparse")
