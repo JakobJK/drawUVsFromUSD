@@ -1,3 +1,9 @@
+"""
+    TODO:
+        - UDIM support
+        - Meta data added to bottom of image
+"""
+
 import argparse
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
