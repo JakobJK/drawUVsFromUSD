@@ -11,7 +11,7 @@ class Settings(NamedTuple):
     front_facing: skia.Paint
     back_facing: skia.Paint
 
-def get_settings():
+def get_settings() -> Settings:
     parser = argparse.ArgumentParser(description="Debug argparse")
 
     parser.add_argument("--path", type=str, default="./example.usd", help="Path to the USD file")

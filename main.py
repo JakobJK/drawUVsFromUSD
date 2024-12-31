@@ -1,10 +1,3 @@
-"""
-    TODO:
-        - UDIM support
-        - Meta data added to bottom of image
-"""
-
-import argparse
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
 import skia
@@ -120,14 +113,17 @@ def get_paths_from_graph(graph: Dict[int, List[int]]) -> List[List[int]]:
             paths.append(traverse_graph(graph, visited, key))
     return paths
 
-def draw_polygon(polygon: List[Tuple[float, float]], canvas: skia.Canvas, settings: object):
+def draw_polygon(polygon: List[Tuple[float, float]], canvas: skia.Canvas, settings: Settings) -> None:
     """
     Draw a polygon on the canvas.
 
     Args:
         polygon (List[Tuple[float, float]]): List of UV positions defining the polygon.
         canvas (skia.Canvas): Canvas to draw on.
-        settings (object): Settings object containing drawing parameters.
+        settings (Settings): Settings object containing drawing parameters.
+
+    Returns:
+        None
     """
     scaled_polygon = [
         skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size)
@@ -138,7 +134,7 @@ def draw_polygon(polygon: List[Tuple[float, float]], canvas: skia.Canvas, settin
     canvas.drawPath(path, settings.front_facing if is_front_facing(polygon) else settings.back_facing)
     canvas.drawPath(path, settings.internal_edges)
 
-def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], canvas: skia.Canvas, settings: object):
+def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], canvas: skia.Canvas, settings: Settings) -> None:
     """
     Draw the border edges of a path on the canvas.
 
@@ -146,7 +142,10 @@ def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], 
         path (List[int]): List of indices defining the path.
         uv_positions (List[Tuple[float, float]]): UV positions for all vertices.
         canvas (skia.Canvas): Canvas to draw on.
-        settings (object): Settings object containing drawing parameters.
+        settings (Settings): Settings object containing drawing parameters.
+
+    Returns:
+        None
     """
     scaled_path = [
         skia.Point(uv_positions[idx][0] * settings.size, (1 - uv_positions[idx][1]) * settings.size)
@@ -156,9 +155,12 @@ def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], 
     path_obj.addPoly(scaled_path, close=True)
     canvas.drawPath(path_obj, settings.border_edges)
 
-def main():
+def main() -> None:
     """
-    Main function to process a USD stage, extract UV data, and draw the UVs.
+    Main function to process a USD stage, extract UV data, and draw the mesh.
+
+    Returns:
+        None
     """
     settings = get_settings()
     stage = Usd.Stage.Open(settings.path)
@@ -174,7 +176,7 @@ def main():
         uv_positions = uv_prim_vars.Get(Usd.TimeCode.Default())
 
         polygons = []
-        uv_edges = defaultdict(dict)
+        uv_edges = defaultdict(int)
 
         if uv_prim_vars:
             face_vert_count = mesh.GetFaceVertexCountsAttr().Get()
