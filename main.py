@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
 import skia
-from pxr import Usd, UsdGeom
+from pxr import Usd, UsdGeom,
 
 from settings import get_settings, Settings
 
