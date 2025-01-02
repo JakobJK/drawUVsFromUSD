@@ -189,7 +189,7 @@ def get_border_edges(uv_edges: Dict[Tuple[float, float], int]) -> List[List[Tupl
 
     Args:
         uv_edges (Dict[Tuple[float, float], int]): A dictionary where keys are UV coordinate
-            tuples representing edges and values are integers indicating edge usage.
+            tuples representing edges and values are the amount of faces associated with that edge.
 
     Returns:
         List[List[Tuple[float, float]]]: A list of paths, where each path is a list of UV coordinate tuples.
