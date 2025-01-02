@@ -20,6 +20,19 @@ def get_udim_from_uv(u: float, v: float) -> int:
         return -1
     return 1001 + int(v) * 10 + int(u)
 
+def get_udim_from_uvs(uvs: list[tuple[float, float]]) -> int:
+    """
+    Determine if all UVs in a polygon share the same UDIM and return the UDIM.
+
+    Args:
+        uvs (list[tuple[float, float]]): List of UV coordinates.
+
+    Returns:
+        int: UDIM tile number or "-1" if UVs span multiple UDIMs or out of bounds.
+    """
+    udims = {get_udim_from_uv(u, v) for u, v in uvs}
+    return udims.pop() if len(udims) == 1 else -1
+
 def get_uv_edges_from_face(face_uvs: List[int], uv_positions: List[Tuple[float, float]]) -> Dict[Tuple[int, int], Tuple[Tuple[float, float], Tuple[float, float]]]:
     """
     Generate edges for a given face based on UV indices and positions.
@@ -155,6 +168,18 @@ def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], 
     path_obj.addPoly(scaled_path, close=True)
     canvas.drawPath(path_obj, settings.border_edges)
 
+
+def get_all_udims_from_a_face(polygon):
+    udims = set()
+    for u,v  in polygon:
+        udims.add(get_udim_from_uv(u, v))
+    return list(udims)
+
+def get_border_edges(uv_edges):
+    adjecency_list = [edge for edge in uv_edges if uv_edges[edge] == 1]
+    graph = build_graph(adjecency_list)
+    return get_paths_from_graph(graph)
+
 def main() -> None:
     """
     Main function to process a USD stage, extract UV data, and draw the mesh.
@@ -165,11 +190,11 @@ def main() -> None:
     settings = get_settings()
     stage = Usd.Stage.Open(settings.path)
     mesh_prims = [x for x in stage.Traverse() if x.IsA(UsdGeom.Mesh)]
-
-    udims = {}
-
+    
+    skia_surfaces = {}
 
     for prim in mesh_prims:
+            
         mesh = UsdGeom.Mesh(prim)
         uv_prim_vars = UsdGeom.PrimvarsAPI(mesh).GetPrimvar("st")
         uv_positions = uv_prim_vars.Get(Usd.TimeCode.Default())
@@ -187,22 +212,31 @@ def main() -> None:
                 edges = get_uv_edges_from_face(face_uvs, uv_positions)
                 polygon = [uv_positions[uv_index] for uv_index in face_uvs]
                 polygons.append(polygon)
-                for edge, val in edges.items():
+                for edge in edges:
                     uv_edges[edge] = uv_edges.get(edge, 0) + 1
                 index += count
 
-        adjecency_list = [edge for edge in uv_edges if uv_edges[edge] == 1]
-        graph = build_graph(adjecency_list)
-        paths = get_paths_from_graph(graph)
+            border_edges = get_border_edges(uv_edges)
 
-        for polygon in polygons:
-            draw_polygon(polygon,  surface.getCanvas(), settings)
+            for polygon in polygons:
+                udim = get_udim_from_uvs(polygon)
+                if udim not in skia_surfaces:
+                    skia_surfaces[udim] = skia.Surface(settings.size, settings.size)
+                    skia_surfaces[udim].getCanvas().clear(skia.Color4f(1, 1, 1, 0))
+              
+                if udim != -1:
+                    draw_polygon(polygon, skia_surfaces[udim].getCanvas(), settings)
 
-        for path in paths:
-            draw_border_edges(path, uv_positions,  surface.getCanvas(), settings)
+            for border in border_edges:
+                udim = get_udim_from_uvs([uv_positions[uv_index] for uv_index in border])
+                
+                if udim != -1:
+                    draw_border_edges(border, uv_positions,  skia_surfaces[udim].getCanvas(), settings)
 
-    image = surface.makeImageSnapshot()
-    image.save(settings.output_path, skia.kPNG)
+    
+    for surface in skia_surfaces:
+        image = skia_surfaces[surface].makeImageSnapshot()
+        image.save(f"{settings.output_path}.{surface}", skia.kPNG)
 
-if __name__ == "__main__":
+if __name__ == "__main__":#
     main()
