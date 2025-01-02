@@ -168,16 +168,34 @@ def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], 
     path_obj.addPoly(scaled_path, close=True)
     canvas.drawPath(path_obj, settings.border_edges)
 
+def get_all_udims_from_a_face(polygon: List[Tuple[float, float]]) -> List[int]:
+    """
+    Retrieves all unique UDIMs from a face based on its UV coordinates.
 
-def get_all_udims_from_a_face(polygon):
+    Args:
+        polygon (List[Tuple[float, float]]): A list of UV coordinates representing a face.
+
+    Returns:
+        List[int]: A list of unique UDIM indices.
+    """
     udims = set()
-    for u,v  in polygon:
+    for u, v in polygon:
         udims.add(get_udim_from_uv(u, v))
     return list(udims)
 
-def get_border_edges(uv_edges):
-    adjecency_list = [edge for edge in uv_edges if uv_edges[edge] == 1]
-    graph = build_graph(adjecency_list)
+def get_border_edges(uv_edges: Dict[Tuple[float, float], int]) -> List[List[Tuple[float, float]]]:
+    """
+    Retrieves the border edges from a set of UV edges.
+
+    Args:
+        uv_edges (Dict[Tuple[float, float], int]): A dictionary where keys are UV coordinate
+            tuples representing edges and values are integers indicating edge usage.
+
+    Returns:
+        List[List[Tuple[float, float]]]: A list of paths, where each path is a list of UV coordinate tuples.
+    """
+    adjacency_list = [edge for edge in uv_edges if uv_edges[edge] == 1]
+    graph = build_graph(adjacency_list)
     return get_paths_from_graph(graph)
 
 def main() -> None:
