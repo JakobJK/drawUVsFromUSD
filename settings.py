@@ -15,7 +15,7 @@ def get_settings() -> Settings:
     parser = argparse.ArgumentParser(description="Debug argparse")
 
     parser.add_argument("--path", type=str, default="./example.usd", help="Path to the USD file")
-    parser.add_argument("--output_path", type=str, default="output.png", help="Output file path")
+    parser.add_argument("--output_path", type=str, default="output.#.png", help="Output file path")
     parser.add_argument("-s", "--size", type=int, default=2048, help="Image size")
 
     settings = parser.parse_args()

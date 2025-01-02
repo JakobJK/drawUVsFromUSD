@@ -236,7 +236,8 @@ def main() -> None:
     
     for surface in skia_surfaces:
         image = skia_surfaces[surface].makeImageSnapshot()
-        image.save(f"{settings.output_path}.{surface}", skia.kPNG)
+        start, end = settings.output_path.split('#')
+        image.save(f"{start}{surface}{end}", skia.kPNG)
 
-if __name__ == "__main__":#
+if __name__ == "__main__":
     main()
