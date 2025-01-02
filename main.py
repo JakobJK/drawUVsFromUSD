@@ -166,8 +166,7 @@ def main() -> None:
     stage = Usd.Stage.Open(settings.path)
     mesh_prims = [x for x in stage.Traverse() if x.IsA(UsdGeom.Mesh)]
 
-    surface = skia.Surface(settings.size, settings.size)
-    surface.getCanvas().clear(skia.Color4f(1, 1, 1, 0))
+    udims = {}
 
 
     for prim in mesh_prims:
