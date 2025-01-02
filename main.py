@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
 import skia
-from pxr import Usd, UsdGeom,
+from pxr import Usd, UsdGeom
 
 from settings import get_settings, Settings
 
@@ -167,8 +167,8 @@ def main() -> None:
     mesh_prims = [x for x in stage.Traverse() if x.IsA(UsdGeom.Mesh)]
 
     surface = skia.Surface(settings.size, settings.size)
-    canvas = surface.getCanvas()
-    canvas.clear(skia.Color4f(1, 1, 1, 0))
+    surface.getCanvas().clear(skia.Color4f(1, 1, 1, 0))
+
 
     for prim in mesh_prims:
         mesh = UsdGeom.Mesh(prim)
@@ -183,7 +183,7 @@ def main() -> None:
             uv_indicies = uv_prim_vars.GetIndices(Usd.TimeCode.Default())
 
             index = 0
-            for idx, count in enumerate(face_vert_count):
+            for count in face_vert_count:
                 face_uvs = uv_indicies[index:index + count]
                 edges = get_uv_edges_from_face(face_uvs, uv_positions)
                 polygon = [uv_positions[uv_index] for uv_index in face_uvs]
@@ -197,10 +197,10 @@ def main() -> None:
         paths = get_paths_from_graph(graph)
 
         for polygon in polygons:
-            draw_polygon(polygon, canvas, settings)
+            draw_polygon(polygon,  surface.getCanvas(), settings)
 
         for path in paths:
-            draw_border_edges(path, uv_positions, canvas, settings)
+            draw_border_edges(path, uv_positions,  surface.getCanvas(), settings)
 
     image = surface.makeImageSnapshot()
     image.save(settings.output_path, skia.kPNG)
