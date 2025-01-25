@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple, Set
 import skia
 from pxr import Usd, UsdGeom
 
-from settings import get_settings, Settings
+from .settings import get_settings, Settings
 
 def get_udim_from_uv(u: float, v: float) -> int:
     """
@@ -20,7 +20,7 @@ def get_udim_from_uv(u: float, v: float) -> int:
         return -1
     return 1001 + int(v) * 10 + int(u)
 
-def get_udim_from_uvs(uvs: list[tuple[float, float]]) -> int:
+def get_udims_from_uvs(uvs: list[tuple[float, float]]) -> int:
     """
     Determine if all UVs in a polygon share the same UDIM and return the UDIM.
 
@@ -31,7 +31,7 @@ def get_udim_from_uvs(uvs: list[tuple[float, float]]) -> int:
         int: UDIM tile number or "-1" if UVs span multiple UDIMs or out of bounds.
     """
     udims = {get_udim_from_uv(u, v) for u, v in uvs}
-    return udims.pop() if len(udims) == 1 else -1
+    return list(udims)
 
 def get_uv_edges_from_face(face_uvs: List[int], uv_positions: List[Tuple[float, float]]) -> Dict[Tuple[int, int], Tuple[Tuple[float, float], Tuple[float, float]]]:
     """
@@ -237,12 +237,13 @@ def main() -> None:
             border_edges = get_border_edges(uv_edges)
 
             for polygon in polygons:
-                udim = get_udim_from_uvs(polygon)
-                if udim not in skia_surfaces:
-                    skia_surfaces[udim] = skia.Surface(settings.size, settings.size)
-                    skia_surfaces[udim].getCanvas().clear(skia.Color4f(1, 1, 1, 0))
+                udims = get_udims_from_uvs(polygon)
+                for udim in udims:
+                    if udim not in skia_surfaces:
+                        skia_surfaces[udim] = skia.Surface(settings.size, settings.size)
+                        skia_surfaces[udim].getCanvas().clear(skia.Color4f(1, 1, 1, 0))
               
-                if udim != -1:
+                    if udim != -1:
                     draw_polygon(polygon, skia_surfaces[udim].getCanvas(), settings)
 
             for border in border_edges:
