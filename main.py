@@ -3,7 +3,8 @@ from typing import List, Dict, Tuple, Set
 import skia
 from pxr import Usd, UsdGeom
 
-from .settings import get_settings, Settings
+from settings import get_settings, Settings
+
 
 def get_udim_from_uv(u: float, v: float) -> int:
     """
@@ -20,7 +21,8 @@ def get_udim_from_uv(u: float, v: float) -> int:
         return -1
     return 1001 + int(v) * 10 + int(u)
 
-def get_udims_from_uvs(uvs: list[tuple[float, float]]) -> int:
+
+def get_udims_from_uvs(uvs: list[tuple[float, float]]) -> list[int]:
     """
     Determine if all UVs in a polygon share the same UDIM and return the UDIM.
 
@@ -28,12 +30,15 @@ def get_udims_from_uvs(uvs: list[tuple[float, float]]) -> int:
         uvs (list[tuple[float, float]]): List of UV coordinates.
 
     Returns:
-        int: UDIM tile number or "-1" if UVs span multiple UDIMs or out of bounds.
+        list[int]: list of UDIM tiles numbers. "-1" if UVs span multiple UDIMs or out of bounds.
     """
     udims = {get_udim_from_uv(u, v) for u, v in uvs}
     return list(udims)
 
-def get_uv_edges_from_face(face_uvs: List[int], uv_positions: List[Tuple[float, float]]) -> Dict[Tuple[int, int], Tuple[Tuple[float, float], Tuple[float, float]]]:
+
+def get_uv_edges_from_face(
+    face_uvs: List[int], uv_positions: List[Tuple[float, float]]
+) -> Dict[Tuple[int, int], Tuple[Tuple[float, float], Tuple[float, float]]]:
     """
     Generate edges for a given face based on UV indices and positions.
 
@@ -53,6 +58,7 @@ def get_uv_edges_from_face(face_uvs: List[int], uv_positions: List[Tuple[float, 
         edges[(a, b)] = (uv_positions[a], uv_positions[b])
     return edges
 
+
 def is_front_facing(faces: List[Tuple[float, float]]) -> bool:
     """
     Determine if a face is front-facing based on its winding order.
@@ -70,6 +76,7 @@ def is_front_facing(faces: List[Tuple[float, float]]) -> bool:
         area += (u2 - u1) * (v2 + v1)
     return area < 0
 
+
 def build_graph(edges: List[Tuple[int, int]]) -> Dict[int, List[int]]:
     """
     Build an adjacency list representation of a graph from a list of edges.
@@ -86,7 +93,10 @@ def build_graph(edges: List[Tuple[int, int]]) -> Dict[int, List[int]]:
         graph[b].append(a)
     return graph
 
-def traverse_graph(graph: Dict[int, List[int]], visited: Set[int], current: int) -> List[int]:
+
+def traverse_graph(
+    graph: Dict[int, List[int]], visited: Set[int], current: int
+) -> List[int]:
     """
     Perform a depth-first traversal of the graph.
 
@@ -109,6 +119,7 @@ def traverse_graph(graph: Dict[int, List[int]], visited: Set[int], current: int)
             stack.extend(graph[node])
     return path
 
+
 def get_paths_from_graph(graph: Dict[int, List[int]]) -> List[List[int]]:
     """
     Extract all connected paths from the graph.
@@ -126,7 +137,10 @@ def get_paths_from_graph(graph: Dict[int, List[int]]) -> List[List[int]]:
             paths.append(traverse_graph(graph, visited, key))
     return paths
 
-def draw_polygon(polygon: List[Tuple[float, float]], canvas: skia.Canvas, settings: Settings) -> None:
+
+def draw_polygon(
+    polygon: List[Tuple[float, float]], canvas: skia.Canvas, settings: Settings
+) -> None:
     """
     Draw a polygon on the canvas.
 
@@ -139,15 +153,23 @@ def draw_polygon(polygon: List[Tuple[float, float]], canvas: skia.Canvas, settin
         None
     """
     scaled_polygon = [
-        skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size)
-        for uv in polygon
+        skia.Point(uv[0] * settings.size, (1 - uv[1]) * settings.size) for uv in polygon
     ]
     path = skia.Path()
     path.addPoly(scaled_polygon, close=True)
-    canvas.drawPath(path, settings.front_facing if is_front_facing(polygon) else settings.back_facing)
+    canvas.drawPath(
+        path,
+        settings.front_facing if is_front_facing(polygon) else settings.back_facing,
+    )
     canvas.drawPath(path, settings.internal_edges)
 
-def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], canvas: skia.Canvas, settings: Settings) -> None:
+
+def draw_border_edges(
+    path: List[int],
+    uv_positions: List[Tuple[float, float]],
+    canvas: skia.Canvas,
+    settings: Settings,
+) -> None:
     """
     Draw the border edges of a path on the canvas.
 
@@ -161,12 +183,16 @@ def draw_border_edges(path: List[int], uv_positions: List[Tuple[float, float]], 
         None
     """
     scaled_path = [
-        skia.Point(uv_positions[idx][0] * settings.size, (1 - uv_positions[idx][1]) * settings.size)
+        skia.Point(
+            uv_positions[idx][0] * settings.size,
+            (1 - uv_positions[idx][1]) * settings.size,
+        )
         for idx in path
     ]
     path_obj = skia.Path()
     path_obj.addPoly(scaled_path, close=True)
     canvas.drawPath(path_obj, settings.border_edges)
+
 
 def get_all_udims_from_a_face(polygon: List[Tuple[float, float]]) -> List[int]:
     """
@@ -183,7 +209,10 @@ def get_all_udims_from_a_face(polygon: List[Tuple[float, float]]) -> List[int]:
         udims.add(get_udim_from_uv(u, v))
     return list(udims)
 
-def get_border_edges(uv_edges: Dict[Tuple[float, float], int]) -> List[List[Tuple[float, float]]]:
+
+def get_border_edges(
+    uv_edges: Dict[Tuple[float, float], int],
+) -> List[List[Tuple[float, float]]]:
     """
     Retrieves the border edges from a set of UV edges.
 
@@ -198,6 +227,7 @@ def get_border_edges(uv_edges: Dict[Tuple[float, float], int]) -> List[List[Tupl
     graph = build_graph(adjacency_list)
     return get_paths_from_graph(graph)
 
+
 def main() -> None:
     """
     Main function to process a USD stage, extract UV data, and draw the mesh.
@@ -208,11 +238,10 @@ def main() -> None:
     settings = get_settings()
     stage = Usd.Stage.Open(settings.path)
     mesh_prims = [x for x in stage.Traverse() if x.IsA(UsdGeom.Mesh)]
-    
+
     skia_surfaces = {}
 
     for prim in mesh_prims:
-            
         mesh = UsdGeom.Mesh(prim)
         uv_prim_vars = UsdGeom.PrimvarsAPI(mesh).GetPrimvar("st")
         uv_positions = uv_prim_vars.Get(Usd.TimeCode.Default())
@@ -226,7 +255,7 @@ def main() -> None:
 
             index = 0
             for count in face_vert_count:
-                face_uvs = uv_indicies[index:index + count]
+                face_uvs = uv_indicies[index : index + count]
                 edges = get_uv_edges_from_face(face_uvs, uv_positions)
                 polygon = [uv_positions[uv_index] for uv_index in face_uvs]
                 polygons.append(polygon)
@@ -242,21 +271,28 @@ def main() -> None:
                     if udim not in skia_surfaces:
                         skia_surfaces[udim] = skia.Surface(settings.size, settings.size)
                         skia_surfaces[udim].getCanvas().clear(skia.Color4f(1, 1, 1, 0))
-              
+
                     if udim != -1:
-                    draw_polygon(polygon, skia_surfaces[udim].getCanvas(), settings)
+                        draw_polygon(polygon, skia_surfaces[udim].getCanvas(), settings)
 
             for border in border_edges:
-                udim = get_udim_from_uvs([uv_positions[uv_index] for uv_index in border])
-                
-                if udim != -1:
-                    draw_border_edges(border, uv_positions,  skia_surfaces[udim].getCanvas(), settings)
+                udims = get_udims_from_uvs(
+                    [uv_positions[uv_index] for uv_index in border]
+                )
+                for udim in udims:
+                    if udim != -1:
+                        draw_border_edges(
+                            border,
+                            uv_positions,
+                            skia_surfaces[udim].getCanvas(),
+                            settings,
+                        )
 
-    
     for surface in skia_surfaces:
         image = skia_surfaces[surface].makeImageSnapshot()
-        start, end = settings.output_path.split('#')
+        start, end = settings.output_path.split("#")
         image.save(f"{start}{surface}{end}", skia.kPNG)
+
 
 if __name__ == "__main__":
     main()
